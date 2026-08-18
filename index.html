@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Trade Web · Statecraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1220; --panel:#101A2C; --line:#223349; --steel:#4FB0E8;
+    --text:#E8EDF5; --dim:#8FA3BF;
+    --agri:#D9B44A; --forest:#5FA05A; --mine:#9AA5B1; --husb:#C9895B;
+    --smith:#E0763A; --fish:#3FB8AF; --magic:#A879E0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--ink); color:var(--text);
+    font-family:"Source Sans 3",system-ui,sans-serif;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:20px 28px 8px; display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{
+    font-family:Cinzel,serif; font-weight:700; font-size:clamp(20px,3.4vw,30px);
+    letter-spacing:.06em; color:var(--steel);
+  }
+  header .sub{color:var(--dim); font-size:14px; font-style:italic}
+  .filters{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; padding-bottom:8px}
+  .filters button{
+    background:transparent; color:var(--dim); border:1px solid var(--line);
+    border-radius:999px; padding:6px 14px; font:inherit; font-size:13px; cursor:pointer;
+  }
+  .filters button[aria-pressed="true"]{color:var(--ink); background:var(--steel); border-color:var(--steel); font-weight:600}
+  .filters button:focus-visible{outline:2px solid var(--steel); outline-offset:2px}
+  main{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:0; min-height:0}
+  #chart{min-height:520px; position:relative}
+  svg{width:100%; height:100%; display:block}
+  aside{
+    border-left:1px solid var(--line); background:var(--panel);
+    padding:22px 22px 28px; overflow-y:auto;
+  }
+  aside h2{font-family:Cinzel,serif; font-size:20px; letter-spacing:.05em; margin-bottom:2px}
+  aside .verb{font-size:12px; letter-spacing:.22em; color:var(--dim); text-transform:uppercase; margin-bottom:14px}
+  aside .quote{font-style:italic; color:var(--dim); border-left:2px solid var(--line); padding-left:10px; margin-bottom:16px; font-size:14px}
+  aside h3{font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--steel); margin:14px 0 6px}
+  aside ul{list-style:none}
+  aside li{padding:3px 0; font-size:14.5px; line-height:1.4}
+  aside li b{font-weight:600}
+  aside .cannot{color:var(--dim); font-size:13.5px; margin-top:14px; padding-top:12px; border-top:1px dashed var(--line)}
+  .hint{color:var(--dim); font-size:13.5px; line-height:1.5}
+  .node{cursor:pointer}
+  .node:focus-visible circle{outline:none; stroke:var(--text)!important; stroke-width:3}
+  .node text{font-family:Cinzel,serif; font-weight:600; letter-spacing:.04em; fill:var(--text); pointer-events:none}
+  .node .glyph{font-family:"Source Sans 3"; font-size:20px}
+  .edge{fill:none; stroke-width:1.8; opacity:.85}
+  .edgelabel{font-size:10.5px; letter-spacing:.06em; fill:var(--dim); text-transform:uppercase}
+  .dimmed{opacity:.10; transition:opacity .25s}
+  .lit{opacity:1; transition:opacity .25s}
+  .flow{stroke-dasharray:5 6; animation:flow 1.6s linear infinite}
+  @keyframes flow{to{stroke-dashoffset:-22}}
+  @media (prefers-reduced-motion:reduce){.flow{animation:none}}
+  footer{padding:10px 28px; border-top:1px solid var(--line); color:var(--dim); font-size:12.5px}
+  @media (max-width:900px){
+    main{grid-template-columns:1fr}
+    aside{border-left:none; border-top:1px solid var(--line)}
+    #chart{min-height:420px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>THE TRADE WEB</h1>
+  <span class="sub">Seven charters. Nobody stands alone.</span>
+  <nav class="filters" aria-label="Route filters">
+    <button data-chain="all" aria-pressed="true">All routes</button>
+    <button data-chain="supply" aria-pressed="false">The supply chain</button>
+    <button data-chain="knowledge" aria-pressed="false">The knowledge chain</button>
+    <button data-chain="sea" aria-pressed="false">The sea chain</button>
+  </nav>
+</header>
+<main>
+  <div id="chart"><svg id="web" role="img" aria-label="Interactive map of trade routes between the seven charters"></svg></div>
+  <aside id="panel">
+    <h2>Read the chart</h2>
+    <p class="verb">how to use it</p>
+    <p class="hint">Every dashed line is a trade route, drawn the way relations are drawn on the world map. The arrow points the way the goods travel. Routes into the centre serve <b>everyone</b>.</p>
+    <p class="hint" style="margin-top:10px">Click a charter to see what it sells, what it needs, and who it cannot live without. Click open water to see the whole web again.</p>
+    <p class="hint" style="margin-top:10px">The three chain buttons above isolate the web's three great circuits.</p>
+    <p class="cannot">A charter is defined by what it cannot do. That is why the routes exist.</p>
+  </aside>
+</main>
+<footer>Statecraft · the charter economy · every route here is live on the server</footer>
+
+<script>
+const CHARTERS = {
+  hub:  {name:"EVERYONE", glyph:"🌍", color:"#4FB0E8", verb:"the whole server",
+         quote:"Every route into the centre is a good the whole world queues for.",
+         sells:[], needs:[], cannot:""},
+  agri: {name:"Agricultural", glyph:"🌾", color:"var(--agri)", cvar:"#D9B44A", verb:"FEEDS",
+         quote:"Everyone eats. Not everyone farms.",
+         sells:["<b>Food</b> - crops grow at full speed only on their land","<b>Golden carrots & glistering melon</b> - the brewing inputs","<b>Feast dishes</b>, cooked at the Great Farm","<b>Breeding fodder</b> for the herds"],
+         needs:["Tools from the <b>forge</b>","Barrels from the <b>mill</b>","Potions from the <b>tower</b>"],
+         cannot:"Makes nothing inedible."},
+  forest:{name:"Forestry", glyph:"🪵", color:"var(--forest)", cvar:"#5FA05A", verb:"ENABLES",
+         quote:"Nobody wants their goods for their own sake. Everybody needs them.",
+         sells:["<b>Paper & bookshelves</b> - the enchanting bottleneck","<b>The fuel trade</b> - their charcoal smelts 10, all else 7","<b>Barrels & storage</b>","<b>Cargo vessels</b>, laid down at the Sawmill's yard"],
+         needs:["Food from the <b>fields</b>","Axes from the <b>forge</b>"],
+         cannot:"Makes no finished tool or weapon."},
+  mine: {name:"Mining", glyph:"⛏️", color:"var(--mine)", cvar:"#9AA5B1", verb:"EXTRACTS",
+         quote:"Sells the raw earth. Finishes nothing.",
+         sells:["<b>Raw ore</b> at volume - the forge's lifeblood","<b>The Deep Lode</b> - the renewable seam","<b>Deepslate, gems, redstone</b>"],
+         needs:["Food from the <b>fields</b>","Picks & rails from the <b>forge</b>","Fuel from the <b>mill</b>"],
+         cannot:"Turns nothing into anything."},
+  husb: {name:"Husbandry", glyph:"🐄", color:"var(--husb)", cvar:"#C9895B", verb:"BREEDS",
+         quote:"Living capital, not food.",
+         sells:["<b>Saddles</b> - stitched nowhere else on earth","<b>Leather</b> - half of every book","<b>Papered stock</b>, certified at the Stockyard","<b>Grinder goods</b> - gunpowder, bone, string, pearls"],
+         needs:["Fodder from the <b>fields</b>","Shears from the <b>forge</b>"],
+         cannot:"Grows not a single plant."},
+  smith:{name:"Smithing", glyph:"🔨", color:"var(--smith)", cvar:"#E0763A", verb:"FORGES",
+         quote:"Shapes what miners pull out. Digs nothing.",
+         sells:["<b>The netherite upgrade</b> - travel to their Forge","<b>The world's only anvils & bells</b>","<b>Templates, chainmail, rails</b>","<b>Penalty-free repair</b>"],
+         needs:["<b>Raw ore</b> from the mines - it digs nothing itself","Fuel from the <b>mill</b>","Food from the <b>fields</b>"],
+         cannot:"Gets none of its own material."},
+  fish: {name:"Fishing", glyph:"🐟", color:"var(--fish)", cvar:"#3FB8AF", verb:"RECOVERS",
+         quote:"The sea itself, and everything only it holds.",
+         sells:["<b>Mending</b> - from their harbour's waters, nowhere else","<b>Tridents, sponges, prismarine</b>","<b>Pufferfish</b> - the water-breathing trade","<b>Nautilus shells & conduits</b>"],
+         needs:["<b>Ships</b> from the Sawmill's yard","Food from the <b>fields</b>"],
+         cannot:"Works nowhere inland."},
+  magic:{name:"Magic", glyph:"✨", color:"var(--magic)", cvar:"#A879E0", verb:"CHARGES",
+         quote:"Makes nothing physical. Powers everything.",
+         sells:["<b>Bottled XP</b> - the one good the till refuses","<b>Full-strength lingering potions</b>","<b>Treasure enchants & books to order</b>","<b>The uncapped anvil</b> - travel to their Athenaeum"],
+         needs:["<b>Paper</b> from the mill + <b>leather</b> from the herds = books","<b>Golden carrots</b> from the fields","<b>Pufferfish</b> from the coast"],
+         cannot:"Makes none of the objects it enchants."}
+};
+
+const EDGES = [
+  {f:"mine",t:"smith",label:"raw ore",chain:"supply"},
+  {f:"smith",t:"hub",label:"templates · netherite",chain:"supply"},
+  {f:"forest",t:"smith",label:"fuel",chain:"supply"},
+  {f:"forest",t:"magic",label:"paper & shelves",chain:"knowledge"},
+  {f:"husb",t:"magic",label:"leather",chain:"knowledge"},
+  {f:"agri",t:"magic",label:"golden carrots",chain:"knowledge"},
+  {f:"fish",t:"magic",label:"pufferfish",chain:"knowledge"},
+  {f:"magic",t:"hub",label:"bottled xp · potions",chain:"knowledge"},
+  {f:"forest",t:"fish",label:"ships",chain:"sea"},
+  {f:"fish",t:"hub",label:"mending",chain:"sea"},
+  {f:"agri",t:"husb",label:"fodder",chain:"supply"},
+  {f:"agri",t:"hub",label:"food",chain:"supply"},
+  {f:"husb",t:"hub",label:"saddles",chain:"supply"},
+  {f:"forest",t:"hub",label:"fuel · barrels",chain:"supply"},
+];
+
+const svg = document.getElementById('web');
+const NS = "http://www.w3.org/2000/svg";
+let W,H,pos={};
+
+function layout(){
+  const r = svg.getBoundingClientRect();
+  W=r.width; H=Math.max(r.height,420);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const cx=W/2, cy=H/2, R=Math.min(W,H)*0.38;
+  const order=["agri","forest","mine","smith","magic","husb","fish"];
+  pos={hub:[cx,cy]};
+  order.forEach((k,i)=>{
+    const a=-Math.PI/2 + i*2*Math.PI/order.length;
+    pos[k]=[cx+R*Math.cos(a), cy+R*Math.sin(a)];
+  });
+  draw();
+}
+
+function el(n,attrs){const e=document.createElementNS(NS,n);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+
+function draw(){
+  svg.innerHTML='';
+  const defs=el('defs',{});
+  for(const k in CHARTERS){
+    const m=el('marker',{id:'arr-'+k,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'});
+    const p=el('path',{d:'M0,0 L10,5 L0,10 z',fill:CHARTERS[k].cvar||CHARTERS[k].color});
+    m.appendChild(p); defs.appendChild(m);
+  }
+  svg.appendChild(defs);
+
+  const gE=el('g',{id:'edges'}), gL=el('g',{id:'labels'}), gN=el('g',{id:'nodes'});
+  svg.append(gE,gL,gN);
+
+  EDGES.forEach((e,i)=>{
+    const [x1,y1]=pos[e.f],[x2,y2]=pos[e.t];
+    const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+    const pad=e.t==='hub'?46:40, sp=40;
+    const ux=dx/len, uy=dy/len;
+    const sx=x1+ux*sp, sy=y1+uy*sp, ex=x2-ux*pad, ey=y2-uy*pad;
+    const mx=(sx+ex)/2 - uy*(e.t==='hub'?0:34), my=(sy+ey)/2 + ux*(e.t==='hub'?0:34);
+    const col=CHARTERS[e.f].cvar;
+    const path=el('path',{class:'edge flow',d:`M${sx},${sy} Q${mx},${my} ${ex},${ey}`,stroke:col,'marker-end':`url(#arr-${e.f})`,'data-f':e.f,'data-t':e.t,'data-chain':e.chain});
+    gE.appendChild(path);
+    const lx=(sx+2*mx+ex)/4, ly=(sy+2*my+ey)/4;
+    const t=el('text',{class:'edgelabel',x:lx,y:ly-5,'text-anchor':'middle','data-f':e.f,'data-t':e.t,'data-chain':e.chain});
+    t.textContent=e.label; gL.appendChild(t);
+  });
+
+  for(const k in CHARTERS){
+    const [x,y]=pos[k]; const c=CHARTERS[k]; const hub=k==='hub';
+    const g=el('g',{class:'node',tabindex:'0',role:'button','aria-label':c.name,'data-k':k,transform:`translate(${x},${y})`});
+    g.appendChild(el('circle',{r:hub?40:34,fill:'#101A2C',stroke:c.cvar||c.color,'stroke-width':hub?1.5:2.5}));
+    const gl=el('text',{class:'glyph',y:hub?-2:0,'text-anchor':'middle','dominant-baseline':'middle'}); gl.textContent=c.glyph; g.appendChild(gl);
+    const nm=el('text',{y:hub?52:50,'text-anchor':'middle','font-size':hub?'12':'13'}); nm.textContent=c.name.toUpperCase(); g.appendChild(nm);
+    g.addEventListener('click',ev=>{ev.stopPropagation();select(k)});
+    g.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();select(k)}});
+    gN.appendChild(g);
+  }
+  applyState();
+}
+
+let selected=null, chain='all';
+
+function select(k){ selected = (k==='hub'||selected===k) ? null : k; renderPanel(); applyState(); }
+svg.addEventListener('click',()=>{selected=null;renderPanel();applyState();});
+
+document.querySelectorAll('.filters button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    chain=b.dataset.chain;
+    document.querySelectorAll('.filters button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    applyState();
+  });
+});
+
+function applyState(){
+  const lit = e => (chain==='all'||e.dataset.chain===chain) &&
+                   (!selected || e.dataset.f===selected || e.dataset.t===selected);
+  document.querySelectorAll('.edge,.edgelabel').forEach(e=>{
+    e.classList.toggle('dimmed',!lit(e)); e.classList.toggle('lit',lit(e));
+  });
+  document.querySelectorAll('.node').forEach(n=>{
+    const k=n.dataset.k;
+    const on = !selected ? true :
+      k===selected || k==='hub'&&false ||
+      EDGES.some(e=>(e.f===selected&&e.t===k)||(e.t===selected&&e.f===k));
+    n.classList.toggle('dimmed', selected? !(on||k===selected):false);
+  });
+}
+
+function renderPanel(){
+  const p=document.getElementById('panel');
+  if(!selected){
+    p.innerHTML=`<h2>Read the chart</h2><p class="verb">how to use it</p>
+    <p class="hint">Every dashed line is a trade route, drawn the way relations are drawn on the world map. The arrow points the way the goods travel. Routes into the centre serve <b>everyone</b>.</p>
+    <p class="hint" style="margin-top:10px">Click a charter to see what it sells, what it needs, and who it cannot live without.</p>
+    <p class="cannot">A charter is defined by what it cannot do. That is why the routes exist.</p>`;
+    return;
+  }
+  const c=CHARTERS[selected];
+  p.innerHTML=`<h2 style="color:${c.cvar}">${c.glyph} ${c.name}</h2>
+  <p class="verb">${c.verb}</p>
+  <p class="quote">${c.quote}</p>
+  <h3>It sells</h3><ul>${c.sells.map(s=>`<li>${s}</li>`).join('')}</ul>
+  <h3>It needs</h3><ul>${c.needs.map(s=>`<li>${s}</li>`).join('')}</ul>
+  <p class="cannot">${c.cannot}</p>`;
+}
+
+new ResizeObserver(layout).observe(document.getElementById('chart'));
+layout();
+</script>
+</body>
+</html>
